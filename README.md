@@ -107,5 +107,5 @@ flutter run -d macos --dart-define=API_BASE_URL=http://localhost:8000
 - 例：`OPENAI_BASE_URL=https://free.v36.cm` 或 `OPENAI_BASE_URL=https://api.v36.cm`
 
 ## 前端 / 後端詳細文件連結
-- 前端：[plant_care_app/README.md](file:///Users/felix/Documents/Flutter%20%E6%95%99%EAD%B8/Max/Plant_Care/plant_care_app/README.md)
-- 後端：[plant_care_backend/README.md](file:///Users/felix/Documents/Flutter%20%E6%95%99%EAD%B8/Max/Plant_Care/plant_care_backend/README.md)
+- 前端：[plant_care_app/README.md](https://github.com/Felix-Project-Hub/Plant_Care/blob/main/plant_care_app/README.md)
+- 後端：[plant_care_backend/README.md](https://github.com/Felix-Project-Hub/Plant_Care/blob/main/plant_care_backend/README.md)
