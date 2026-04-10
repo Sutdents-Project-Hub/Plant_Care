@@ -15,6 +15,7 @@ from app.models import Plant, User
 from app.schemas import (
     ApiMessage,
     PlantCreateRequest,
+    PlantGetInfoRequest,
     PlantInitializeRequest,
     PlantListResponse,
     PlantPublic,
@@ -56,11 +57,11 @@ def _enforce_email(user: User, email: str | None) -> None:
 
 @router.post("/get_plant_info", response_model=PlantListResponse)
 def get_plant_info(
-    payload: dict,
+    payload: PlantGetInfoRequest,
     user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ) -> PlantListResponse:
-    _enforce_email(user, payload.get("email"))
+    _enforce_email(user, str(payload.email) if payload.email else None)
     plants = db.scalars(select(Plant).where(Plant.user_id == user.id).order_by(Plant.created_at.desc())).all()
     results = [
         PlantPublic(
@@ -136,6 +137,9 @@ def update_plant_task(
     if plant is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Plant not found")
 
-    plant.task = _decode_task(payload.task)
+    decoded_task = _decode_task(payload.task)
+    if decoded_task is None:
+        raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail="Invalid task")
+    plant.task = decoded_task
     db.commit()
     return ApiMessage(message="Task updated")

@@ -76,6 +76,11 @@ class PlantListResponse(BaseModel):
     results: list[PlantPublic]
 
 
+class PlantGetInfoRequest(BaseModel):
+    email: EmailStr | None = None
+
+
+
 class PlantCreateRequest(BaseModel):
     plant_variety: str
     plant_name: str
