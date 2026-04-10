@@ -139,7 +139,10 @@ def refresh(payload: TokenRefreshRequest, db: Session = Depends(get_db)) -> Toke
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid refresh token")
     if token_row.revoked_at is not None:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid refresh token")
-    if token_row.expires_at <= datetime.now(tz=UTC):
+    expires_at = token_row.expires_at
+    if expires_at.tzinfo is None:
+        expires_at = expires_at.replace(tzinfo=UTC)
+    if expires_at <= datetime.now(tz=UTC):
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Expired refresh token")
     if token_row.token_hash != hash_refresh_token(payload.refresh_token):
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid refresh token")
