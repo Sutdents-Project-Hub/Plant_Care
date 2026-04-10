@@ -1,0 +1,44 @@
+services:
+  db:
+    image: postgres:16
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: plant_care
+      POSTGRES_USER: plant_care
+      POSTGRES_PASSWORD: plant_care
+    ports:
+      - "5432:5432"
+    volumes:
+      - plant_care_db:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U plant_care -d plant_care"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  api:
+    build: .
+    restart: unless-stopped
+    environment:
+      DATABASE_URL: postgresql+psycopg://plant_care:plant_care@db:5432/plant_care
+      JWT_SECRET: change-me
+      JWT_ACCESS_TTL_MINUTES: "15"
+      JWT_REFRESH_TTL_DAYS: "30"
+      CORS_ALLOW_ORIGINS: "*"
+      AI_PROVIDER: openai
+      OPENAI_API_KEY: ""
+      OPENAI_BASE_URL: https://api.openai.com/v1
+      OPENAI_MODEL: gpt-4o-mini
+    ports:
+      - "8000:8000"
+    depends_on:
+      db:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/health').read()"]
+      interval: 10s
+      timeout: 3s
+      retries: 10
+
+volumes:
+  plant_care_db:
