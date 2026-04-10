@@ -262,15 +262,17 @@ class _HomePageState extends State<HomePage>
             mainAxisSize: MainAxisSize.min,
             children: [
               Container(
-                padding: const EdgeInsets.all(8),
                 decoration: BoxDecoration(
                   gradient: AppColors.yellowGradient,
                   borderRadius: BorderRadius.circular(10),
                 ),
-                child: const Icon(
-                  Icons.eco_rounded,
-                  color: Colors.white,
-                  size: 20,
+                width: 36,
+                height: 36,
+                clipBehavior: Clip.antiAlias,
+                child: Image.asset(
+                  'assets/icon/app_icon.png',
+                  fit: BoxFit.cover,
+                  semanticLabel: 'App icon',
                 ),
               ),
               const SizedBox(width: 10),
