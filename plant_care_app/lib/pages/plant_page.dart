@@ -229,7 +229,6 @@ class _PlantPageState extends State<PlantPage> {
 
                 if (ok == true) {
                   Navigator.of(context).pop(true);
-                  await _showBlockingSpinner5s();
                   if (!mounted) return;
                   await _runBusy<void>(() async => _refreshPlantFromServer());
                 } else {
@@ -246,22 +245,6 @@ class _PlantPageState extends State<PlantPage> {
         );
       },
     );
-  }
-
-  Future<void> _showBlockingSpinner5s() async {
-    showDialog<void>(
-      context: context,
-      barrierDismissible: false,
-      barrierColor: Colors.black54,
-      builder:
-          (_) => const Center(
-            child: CircularProgressIndicator(color: Colors.white),
-          ),
-    );
-
-    await Future.delayed(const Duration(seconds: 5));
-
-    if (mounted) Navigator.of(context).pop();
   }
 
   Future<void> _completeTask(String taskKey) async {
