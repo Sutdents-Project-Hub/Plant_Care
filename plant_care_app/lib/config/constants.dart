@@ -1,6 +1,10 @@
 // lib/config/constants.dart
 import 'package:flutter/material.dart';
 
+class AppAssets {
+  static const String appIcon = 'assets/icon/app_icon.png';
+}
+
 class AppConfig {
   static const String apiBaseUrl = String.fromEnvironment(
     'API_BASE_URL',

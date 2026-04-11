@@ -14,19 +14,19 @@ router = APIRouter()
 
 def _fallback_tasks(req: AiGenerateTasksRequest) -> dict[str, PlantTaskItem]:
     base = [
-        "檢查土壤濕度",
-        "觀察葉片狀態",
-        "檢查是否有病蟲害",
-        "確認光照是否充足",
-        "清潔葉片與盆器表面",
-        "記錄生長狀況",
+        "Check soil moisture",
+        "Observe leaf condition",
+        "Inspect for pests or disease",
+        "Confirm light exposure is adequate",
+        "Wipe leaves and clean the pot surface",
+        "Record growth notes",
     ]
     if req.plant_state == "seedling":
-        base.insert(1, "避免過度澆水，保持微濕")
+        base.insert(1, "Avoid overwatering; keep soil slightly moist")
     if req.plant_state == "growing":
-        base.insert(1, "依品種調整澆水頻率")
+        base.insert(1, "Adjust watering frequency for this variety")
     if req.plant_state == "stable":
-        base.insert(1, "維持固定照護節奏")
+        base.insert(1, "Maintain a consistent care routine")
     base = base[: req.count]
     return {f"task_{i+1}": PlantTaskItem(content=base[i], state=False) for i in range(len(base))}
 
@@ -48,6 +48,48 @@ def _coerce_tasks(obj: Any) -> dict[str, PlantTaskItem] | None:
     return out or None
 
 
+def _extract_first_json_object(text: str) -> dict[str, Any] | None:
+    if not isinstance(text, str):
+        return None
+    s = text.strip()
+    if not s:
+        return None
+    start = s.find("{")
+    if start < 0:
+        return None
+    depth = 0
+    in_string = False
+    escape = False
+    for i in range(start, len(s)):
+        ch = s[i]
+        if in_string:
+            if escape:
+                escape = False
+                continue
+            if ch == "\\":
+                escape = True
+                continue
+            if ch == '"':
+                in_string = False
+            continue
+        if ch == '"':
+            in_string = True
+            continue
+        if ch == "{":
+            depth += 1
+            continue
+        if ch == "}":
+            depth -= 1
+            if depth == 0:
+                candidate = s[start : i + 1]
+                try:
+                    v = json.loads(candidate)
+                except json.JSONDecodeError:
+                    return None
+                return v if isinstance(v, dict) else None
+    return None
+
+
 def _chat_completions_path(base_url: str) -> str:
     base = (base_url or "").strip().rstrip("/")
     if base.endswith("/v1"):
@@ -60,13 +102,23 @@ async def generate_tasks(req: AiGenerateTasksRequest) -> AiGenerateTasksResponse
     if not settings.openai_api_key:
         return AiGenerateTasksResponse(tasks=_fallback_tasks(req))
 
+    today_state = (req.today_state or "").strip()
+    last_watering_time = (req.last_watering_time or "").strip()
+    extra = ""
+    if today_state:
+        extra += f"今日狀況：{today_state}。"
+    if last_watering_time:
+        extra += f"上次澆水時間：{last_watering_time}。"
+
     prompt = (
-        "你是一個植物照護助理。請根據植物品種與生長階段，產生可執行、具體、每日可勾選的照護任務。"
-        "請用 JSON 物件回傳，格式為："
-        '{"task_1":{"content":"...","state":false},"task_2":{"content":"...","state":false}}。'
-        f"任務數量：{req.count}。語系：{req.locale}。"
-        f"植物品種：{req.plant_variety}。生長階段：{req.plant_state}。"
-        "只回傳 JSON，不要加任何說明文字。"
+        "You are a plant care assistant. Based on the plant variety, growth stage, today's condition, and last watering time, "
+        "generate actionable daily care tasks that can be checked off."
+        "Return a JSON object ONLY, in the format:"
+        '{"task_1":{"content":"...","state":false},"task_2":{"content":"...","state":false}}.'
+        f"Task count: {req.count}. Language: English. Locale: {req.locale}."
+        f"Plant variety: {req.plant_variety}. Growth stage: {req.plant_state}."
+        f"{extra}"
+        "Return JSON only. Do not add any extra text."
     )
 
     try:
@@ -96,6 +148,8 @@ async def generate_tasks(req: AiGenerateTasksRequest) -> AiGenerateTasksResponse
     try:
         decoded = json.loads(content)
     except json.JSONDecodeError:
-        return AiGenerateTasksResponse(tasks=_fallback_tasks(req))
+        decoded = _extract_first_json_object(content)
+        if decoded is None:
+            return AiGenerateTasksResponse(tasks=_fallback_tasks(req))
     tasks = _coerce_tasks(decoded)
     return AiGenerateTasksResponse(tasks=tasks or _fallback_tasks(req))

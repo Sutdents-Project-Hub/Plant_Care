@@ -16,11 +16,11 @@ class PlantPage extends StatefulWidget {
 class _PlantPageState extends State<PlantPage> {
   bool _initDialogShown = false;
   bool _busy = false;
+  bool _dirty = false;
 
   late Map<String, dynamic> _plant;
 
   final TextEditingController _todayStateCtrl = TextEditingController();
-  DateTime? _lastWateringDateTime;
 
   @override
   void initState() {
@@ -29,8 +29,10 @@ class _PlantPageState extends State<PlantPage> {
 
     WidgetsBinding.instance.addPostFrameCallback((_) async {
       if (!mounted) return;
-      await _maybeForceInitialize();
+      await _runBusy<void>(() async => _refreshPlantFromServer());
       if (!mounted) return;
+      final ok = await _maybeForceInitialize();
+      if (!ok || !mounted) return;
       await _maybeGenerateTasksIfMissing();
     });
   }
@@ -110,29 +112,9 @@ class _PlantPageState extends State<PlantPage> {
   }
 
   Future<void> _refreshPlantFromServer() async {
-    final plants = await ApiService.getPlantInfo();
+    final found = await ApiService.getPlantDetail(uuid: _uuid);
     if (!mounted) return;
-
-    Map<String, dynamic>? found;
-    for (final p in plants) {
-      if ((p['uuid'] ?? '').toString() == _uuid) {
-        found = p;
-        break;
-      }
-    }
-
-    if (found == null) {
-      await showAlert(
-        context,
-        'Plant not found after refresh.',
-        title: 'Error',
-      );
-      return;
-    }
-
-    setState(() {
-      _plant = Map<String, dynamic>.from(found!);
-    });
+    setState(() => _plant = Map<String, dynamic>.from(found));
   }
 
   Future<T?> _runBusy<T>(Future<T?> Function() job) async {
@@ -145,103 +127,120 @@ class _PlantPageState extends State<PlantPage> {
     }
   }
 
-  Future<void> _maybeForceInitialize() async {
-    if (_initDialogShown) return;
+  Future<bool> _maybeForceInitialize() async {
+    if (_initDialogShown) return true;
 
     if (_needsInitializationToday()) {
       _initDialogShown = true;
 
       final ok = await _showInitializeDialog();
-      if (!mounted) return;
+      if (!mounted) return false;
 
       if (ok != true) {
         Navigator.of(context).pop(false);
+        return false;
       }
     }
+    return true;
   }
 
   Future<bool?> _showInitializeDialog() async {
     _todayStateCtrl.text = '';
-    _lastWateringDateTime = null;
+    DateTime? lastDt;
+    bool saving = false;
 
     return showDialog<bool>(
       context: context,
       barrierDismissible: false,
       builder: (ctx) {
-        return AlertDialog(
-          title: const Text('Initialization required'),
-          content: SingleChildScrollView(
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                const Text(
-                  'This plant has not been initialized today.\n'
-                  'Please describe the current condition and select the last watering time.',
+        return StatefulBuilder(
+          builder: (ctx, setLocal) {
+            return AlertDialog(
+              title: const Text('Initialization required'),
+              content: SingleChildScrollView(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    const Text(
+                      'This plant has not been initialized today.\n'
+                      'Please describe the current condition and select the last watering time.',
+                    ),
+                    const SizedBox(height: 16),
+                    TextField(
+                      controller: _todayStateCtrl,
+                      maxLines: 4,
+                      enabled: !saving,
+                      decoration: const InputDecoration(
+                        labelText: 'Current condition',
+                        hintText: 'e.g., soil dry, leaves healthy, pests found...',
+                        border: OutlineInputBorder(),
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    _LastWateringPicker(
+                      value: lastDt,
+                      onPick: (dt) => setLocal(() => lastDt = dt),
+                    ),
+                  ],
                 ),
-                const SizedBox(height: 16),
-                TextField(
-                  controller: _todayStateCtrl,
-                  maxLines: 4,
-                  decoration: const InputDecoration(
-                    labelText: 'Current condition',
-                    hintText: 'e.g., soil dry, leaves healthy, pests found...',
-                    border: OutlineInputBorder(),
-                  ),
+              ),
+              actions: [
+                TextButton(
+                  onPressed: saving ? null : () => Navigator.of(ctx).pop(false),
+                  child: const Text('Back'),
                 ),
-                const SizedBox(height: 12),
-                _LastWateringPicker(
-                  value: _lastWateringDateTime,
-                  onPick: (dt) => setState(() => _lastWateringDateTime = dt),
+                ElevatedButton(
+                  onPressed:
+                      saving
+                          ? null
+                          : () async {
+                            final todayState = _todayStateCtrl.text.trim();
+
+                            if (todayState.isEmpty || lastDt == null) {
+                              await showAlert(
+                                ctx,
+                                'Please fill in the condition and last watering time.',
+                                title: 'Missing info',
+                              );
+                              return;
+                            }
+
+                            setLocal(() => saving = true);
+                            try {
+                              final detail = await ApiService.initializePlant(
+                                uuid: _uuid,
+                                todayState: todayState,
+                                lastWateringTime: _formatYmdHmsCompact(lastDt!),
+                              );
+                              if (!mounted) return;
+                              if (!ctx.mounted) return;
+                              setState(() {
+                                _plant = Map<String, dynamic>.from(detail);
+                                _dirty = true;
+                              });
+                              Navigator.of(ctx).pop(true);
+                            } catch (e) {
+                              if (!mounted) return;
+                              await showAlert(
+                                ctx,
+                                e.toString(),
+                                title: 'Failed',
+                              );
+                              setLocal(() => saving = false);
+                            }
+                          },
+                  child:
+                      saving
+                          ? const SizedBox(
+                            width: 18,
+                            height: 18,
+                            child: CircularProgressIndicator(strokeWidth: 2),
+                          )
+                          : const Text('Submit'),
                 ),
               ],
-            ),
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.of(ctx).pop(false),
-              child: const Text('Back'),
-            ),
-            ElevatedButton(
-              onPressed: () async {
-                final todayState = _todayStateCtrl.text.trim();
-                final lastDt = _lastWateringDateTime;
-
-                if (todayState.isEmpty || lastDt == null) {
-                  await showAlert(
-                    context,
-                    'Please fill in the condition and last watering time.',
-                    title: 'Missing info',
-                  );
-                  return;
-                }
-
-                final lastWateringTime = _formatYmdHmsCompact(lastDt);
-
-                final ok = await _runBusy<bool>(() async {
-                  return await ApiService.initializePlant(
-                    uuid: _uuid,
-                    todayState: todayState,
-                    lastWateringTime: lastWateringTime,
-                  );
-                });
-
-                if (!mounted) return;
-
-                if (ok == true) {
-                  Navigator.of(context).pop(true);
-                  if (!mounted) return;
-                  await _runBusy<void>(() async => _refreshPlantFromServer());
-                } else {
-                  await showAlert(
-                    context,
-                    'Initialization failed. Please try again.',
-                    title: 'Failed',
-                  );
-                }
-              },
-              child: const Text('Submit'),
-            ),
-          ],
+            );
+          },
         );
       },
     );
@@ -301,28 +300,23 @@ class _PlantPageState extends State<PlantPage> {
       }
 
       await _refreshPlantFromServer();
+      await ApiService.me();
+      _dirty = true;
     });
   }
 
   Future<void> _maybeGenerateTasksIfMissing() async {
+    if (_needsInitializationToday()) return;
     final existing = _taskMap();
     if (existing != null && existing.isNotEmpty) return;
 
-    final variety = (_plant['plant_variety'] ?? '').toString().trim();
-    final state = (_plant['plant_state'] ?? '').toString().trim();
-    if (variety.isEmpty || state.isEmpty) return;
-
     await _runBusy<void>(() async {
-      final res = await ApiService.generateTasks(
-        plantVariety: variety,
-        plantState: state,
-      );
-      final tasks = res['tasks'];
-      if (tasks is! Map) return;
-      final normalized = Map<String, dynamic>.from(tasks);
-      final ok = await ApiService.updatePlantTask(uuid: _uuid, task: normalized);
-      if (!ok) return;
-      await _refreshPlantFromServer();
+      final detail = await ApiService.generateTasksForPlant(uuid: _uuid);
+      if (!mounted) return;
+      setState(() {
+        _plant = Map<String, dynamic>.from(detail);
+        _dirty = true;
+      });
     });
   }
 
@@ -338,9 +332,15 @@ class _PlantPageState extends State<PlantPage> {
 
     final caredToday = !_needsInitializationToday();
 
-    return Stack(
-      children: [
-        Scaffold(
+    return PopScope(
+      canPop: false,
+      onPopInvokedWithResult: (didPop, result) {
+        if (didPop) return;
+        Navigator.of(context).pop(_dirty);
+      },
+      child: Stack(
+        children: [
+          Scaffold(
           body: Stack(
             children: [
               // 背景裝飾
@@ -411,7 +411,8 @@ class _PlantPageState extends State<PlantPage> {
               ),
             ),
           ),
-      ],
+        ],
+      ),
     );
   }
 
@@ -428,7 +429,7 @@ class _PlantPageState extends State<PlantPage> {
             ),
             child: IconButton(
               icon: const Icon(Icons.arrow_back_ios_new_rounded, size: 20),
-              onPressed: () => Navigator.of(context).pop(),
+              onPressed: () => Navigator.of(context).pop(_dirty),
               color: AppColors.textSecondary,
             ),
           ),

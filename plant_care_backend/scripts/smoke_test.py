@@ -66,6 +66,23 @@ def main() -> None:
 
     headers = {"Authorization": f"Bearer {access_token}"}
 
+    r = client.post("/api/v1/auth/me", headers=headers, json={})
+    _assert(r, 200)
+
+    new_email = "smoke2@example.com"
+    r = client.post(
+        "/api/v1/auth/update_profile",
+        headers=headers,
+        json={
+            "name": "Smoke2",
+            "email": new_email,
+            "phone": "111",
+            "birthday": "19910101",
+        },
+    )
+    _assert(r, 200)
+    email = new_email
+
     r = client.post(
         "/api/v1/plant/create_plant",
         headers=headers,
@@ -105,7 +122,7 @@ def main() -> None:
             "plant_variety": "Monstera",
             "plant_state": "growing",
             "count": 3,
-            "locale": "zh-TW",
+            "locale": "en-US",
         },
     )
     _assert(r, 200)
@@ -125,6 +142,26 @@ def main() -> None:
     anns = r.json()["results"]
     if not anns:
         raise RuntimeError("Expected announcements")
+
+    new_password = "password5678"
+    r = client.post(
+        "/api/v1/auth/change_password",
+        headers=headers,
+        json={"old_password": password, "new_password": new_password},
+    )
+    _assert(r, 200)
+    access_token = r.json()["access_token"]
+    headers = {"Authorization": f"Bearer {access_token}"}
+
+    r = client.post("/api/v1/auth/me", headers=headers, json={})
+    _assert(r, 200)
+
+    r = client.post(
+        "/api/v1/auth/delete_account",
+        headers=headers,
+        json={"password": new_password},
+    )
+    _assert(r, 200)
 
     print("SMOKE_OK")
 

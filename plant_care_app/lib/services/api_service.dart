@@ -18,6 +18,14 @@ class ApiService {
     'Accept': 'application/json',
   };
 
+  static String _decodeBody(http.Response res) {
+    try {
+      return utf8.decode(res.bodyBytes);
+    } catch (_) {
+      return res.body;
+    }
+  }
+
   static Future<http.Response> _post(
     Uri url, {
     Object? body,
@@ -39,6 +47,39 @@ class ApiService {
         final ok = await _refreshTokens();
         if (ok) {
           return _post(url, body: body, auth: auth, retryOn401: false);
+        }
+      }
+
+      return res;
+    } on SocketException {
+      throw ApiException(message: 'No internet connection', code: 0);
+    } on TimeoutException {
+      throw ApiException(message: 'Request timed out', code: 408);
+    } catch (e) {
+      throw ApiException(message: 'Network error: $e', code: 0);
+    }
+  }
+
+  static Future<http.Response> _get(
+    Uri url, {
+    bool auth = true,
+    bool retryOn401 = true,
+  }) async {
+    try {
+      final headers = Map<String, String>.from(_jsonHeaders);
+      final token = Session.accessToken;
+      if (auth && token != null && token.isNotEmpty) {
+        headers['Authorization'] = 'Bearer $token';
+      }
+
+      final res = await http
+          .get(url, headers: headers)
+          .timeout(const Duration(seconds: 15));
+
+      if (res.statusCode == 401 && retryOn401 && Session.refreshToken != null) {
+        final ok = await _refreshTokens();
+        if (ok) {
+          return _get(url, auth: auth, retryOn401: false);
         }
       }
 
@@ -120,6 +161,7 @@ class ApiService {
     await Session.setAuth(
       email: (user['email'] ?? email).toString(),
       name: user['name']?.toString(),
+      points: int.tryParse((user['points'] ?? '').toString()) ?? 0,
       accessToken: accessToken,
       refreshToken: refreshToken,
       accessExpiresAt: accessExpiresAt,
@@ -165,6 +207,7 @@ class ApiService {
     await Session.setAuth(
       email: (user['email'] ?? email).toString(),
       name: user['name']?.toString(),
+      points: int.tryParse((user['points'] ?? '').toString()) ?? 0,
       accessToken: accessToken,
       refreshToken: refreshToken,
       accessExpiresAt: accessExpiresAt,
@@ -180,6 +223,75 @@ class ApiService {
       body: jsonEncode({'email': email}),
     );
     return _json(res);
+  }
+
+  static Future<Map<String, dynamic>> me() async {
+    final res = await _post(_auth('/me'), body: jsonEncode({}));
+    final user = _json(res);
+    await Session.setUserInfo(
+      email: user['email']?.toString(),
+      name: user['name']?.toString(),
+      points: int.tryParse((user['points'] ?? '').toString()),
+    );
+    return user;
+  }
+
+  static Future<Map<String, dynamic>> updateProfile({
+    String? name,
+    String? email,
+    String? phone,
+    String? birthday, // YYYYMMDD or empty to clear
+  }) async {
+    final payload = <String, dynamic>{};
+    if (name != null) payload['name'] = name.trim();
+    if (email != null) payload['email'] = email.trim();
+    if (phone != null) payload['phone'] = phone.trim();
+    if (birthday != null) payload['birthday'] = birthday.trim();
+
+    final res = await _post(_auth('/update_profile'), body: jsonEncode(payload));
+    final user = _json(res);
+    await Session.setUserInfo(
+      email: user['email']?.toString(),
+      name: user['name']?.toString(),
+      points: int.tryParse((user['points'] ?? '').toString()),
+    );
+    return user;
+  }
+
+  static Future<void> changePassword({
+    required String oldPassword,
+    required String newPassword,
+  }) async {
+    final res = await _post(
+      _auth('/change_password'),
+      body: jsonEncode({'old_password': oldPassword, 'new_password': newPassword}),
+    );
+    final data = _json(res);
+    final accessToken = data['access_token']?.toString();
+    final refreshToken = data['refresh_token']?.toString();
+    final accessExpiresAtRaw = data['access_expires_at']?.toString();
+    final accessExpiresAt =
+        accessExpiresAtRaw == null ? null : DateTime.tryParse(accessExpiresAtRaw);
+    if (accessToken == null ||
+        refreshToken == null ||
+        accessExpiresAt == null ||
+        accessToken.isEmpty ||
+        refreshToken.isEmpty) {
+      throw ApiException(message: 'Invalid token response', code: res.statusCode);
+    }
+    await Session.setTokens(
+      accessToken: accessToken,
+      refreshToken: refreshToken,
+      accessExpiresAt: accessExpiresAt,
+    );
+  }
+
+  static Future<void> deleteAccount({required String password}) async {
+    final res = await _post(
+      _auth('/delete_account'),
+      body: jsonEncode({'password': password}),
+    );
+    _json(res);
   }
 
   // ======================================================
@@ -212,7 +324,7 @@ class ApiService {
       throw ApiException(message: 'Unauthorized', code: 401);
     }
     final res = await _post(
-      _plant('/get_plant_info'),
+      _plant('/list'),
       body: jsonEncode({'email': email}),
     );
     final data = _jsonAny(res);
@@ -231,6 +343,11 @@ class ApiService {
           .toList();
     }
     return [];
+  }
+
+  static Future<Map<String, dynamic>> getPlantDetail({required String uuid}) async {
+    final res = await _get(_plant('/$uuid'));
+    return _json(res);
   }
 
   static Map<String, dynamic> _normalizePlant(Map<String, dynamic> p) {
@@ -276,9 +393,10 @@ class ApiService {
 
     dynamic data;
     try {
-      data = res.body.isEmpty ? null : jsonDecode(res.body);
+      final text = _decodeBody(res);
+      data = text.isEmpty ? null : jsonDecode(text);
     } catch (_) {
-      data = res.body;
+      data = _decodeBody(res);
     }
     if (res.statusCode < 200 || res.statusCode >= 300) {
       String msg = 'Request failed';
@@ -294,7 +412,7 @@ class ApiService {
   }
 
   /// 初始化植物（拿任務）
-  static Future<bool> initializePlant({
+  static Future<Map<String, dynamic>> initializePlant({
     required String uuid,
     required String todayState,
     required String lastWateringTime, // YYYYMMDDhhmmss
@@ -313,7 +431,21 @@ class ApiService {
 
     final res = await _post(url, body: jsonEncode(payload));
 
-    return res.statusCode >= 200 && res.statusCode < 300;
+    return _json(res);
+  }
+
+  static Future<Map<String, dynamic>> generateTasksForPlant({
+    required String uuid,
+  }) async {
+    final email = Session.email;
+    if (email == null || email.isEmpty) {
+      throw ApiException(message: 'Unauthorized', code: 401);
+    }
+    final res = await _post(
+      _plant('/$uuid/generate_tasks'),
+      body: jsonEncode({'email': email}),
+    );
+    return _json(res);
   }
 
   /// ✅ NEW: 更新任務狀態（整包 task 送回去）
@@ -337,7 +469,7 @@ class ApiService {
 
     // ✅ 有些後端即使失敗也回 200，所以額外看 message
     try {
-      final data = jsonDecode(res.body);
+      final data = jsonDecode(_decodeBody(res));
       if (data is Map && data['message'] != null) {
         final msg = data['message'].toString().toLowerCase();
         if (msg.contains('fail') || msg.contains('error')) return false;
@@ -358,7 +490,7 @@ class ApiService {
         'plant_variety': plantVariety,
         'plant_state': plantState,
         'count': count,
-        'locale': 'zh-TW',
+        'locale': 'en-US',
       }),
     );
     return _json(res);
@@ -372,7 +504,8 @@ class ApiService {
   static Map<String, dynamic> _json(http.Response res) {
     Map<String, dynamic> data;
     try {
-      final body = res.body.isEmpty ? '{}' : res.body;
+      final raw = _decodeBody(res);
+      final body = raw.isEmpty ? '{}' : raw;
       data = Map<String, dynamic>.from(jsonDecode(body) as Map);
     } catch (_) {
       data = {'message': 'Invalid server response'};
@@ -391,10 +524,11 @@ class ApiService {
   static dynamic _jsonAny(http.Response res) {
     dynamic data;
     try {
-      final body = res.body.isEmpty ? 'null' : res.body;
+      final raw = _decodeBody(res);
+      final body = raw.isEmpty ? 'null' : raw;
       data = jsonDecode(body);
     } catch (_) {
-      data = res.body;
+      data = _decodeBody(res);
     }
     if (res.statusCode < 200 || res.statusCode >= 300) {
       String msg = 'Request failed';

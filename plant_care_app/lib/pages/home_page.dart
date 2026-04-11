@@ -7,6 +7,7 @@ import '../utils/tools.dart';
 import '../widgets/custom_button.dart';
 import '../widgets/loading_widget.dart';
 import '../utils/nav.dart';
+import 'profile_page.dart';
 
 class HomePage extends StatefulWidget {
   const HomePage({super.key});
@@ -115,9 +116,9 @@ class _HomePageState extends State<HomePage>
         // 今天沒照顧 → 加入 notCared (不管天數)
         notCared.add(name);
 
-        // 計算相差天數：超過 7 天 → 額外加入 tooLong
+        // 計算相差天數：滿 7 天(含)以上 → 額外加入 tooLong
         final diffDays = today.difference(initOnly).inDays;
-        if (diffDays > 7) {
+        if (diffDays >= 7) {
           tooLong.add(name);
         }
       }
@@ -133,19 +134,8 @@ class _HomePageState extends State<HomePage>
     }
   }
 
-  Future<void> _onLogout() async {
-    final ok = await confirmDialog(
-      context,
-      title: 'Log out',
-      message: 'Are you sure you want to log out?',
-      okText: 'OK',
-      cancelText: 'Cancel',
-    );
-    if (!ok) return;
-
-    await Session.clear();
-    if (!mounted) return;
-    Navigator.pushNamedAndRemoveUntil(context, '/login', (_) => false);
+  void _openProfile() {
+    Navigator.of(context).push(slideFromRight(const ProfilePage()));
   }
 
   @override
@@ -240,20 +230,7 @@ class _HomePageState extends State<HomePage>
       padding: const EdgeInsets.fromLTRB(20, 12, 20, 12),
       child: Row(
         children: [
-          // 登出按鈕
-          Container(
-            decoration: BoxDecoration(
-              color: AppColors.cardBg,
-              borderRadius: BorderRadius.circular(12),
-              boxShadow: AppShadows.soft,
-            ),
-            child: IconButton(
-              icon: const Icon(Icons.logout_rounded, size: 22),
-              onPressed: _onLogout,
-              tooltip: 'Log out',
-              color: AppColors.textSecondary,
-            ),
-          ),
+          const SizedBox(width: 48),
 
           const Spacer(),
 
@@ -288,8 +265,20 @@ class _HomePageState extends State<HomePage>
 
           const Spacer(),
 
-          // 佔位保持居中
-          const SizedBox(width: 48),
+          // 個人資訊
+          Container(
+            decoration: BoxDecoration(
+              color: AppColors.cardBg,
+              borderRadius: BorderRadius.circular(12),
+              boxShadow: AppShadows.soft,
+            ),
+            child: IconButton(
+              icon: const Icon(Icons.person_rounded, size: 22),
+              onPressed: _openProfile,
+              tooltip: 'Profile',
+              color: AppColors.textSecondary,
+            ),
+          ),
         ],
       ),
     );

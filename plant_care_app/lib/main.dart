@@ -7,6 +7,7 @@ import 'pages/signup_page.dart';
 import 'pages/home_page.dart';
 import 'pages/greenhouse_page.dart';
 import 'pages/launch_gate.dart';
+import 'pages/profile_page.dart';
 import 'utils/nav.dart';
 
 void main() {
@@ -28,7 +29,6 @@ class MyApp extends StatelessWidget {
       useMaterial3: true,
       colorSchemeSeed: AppColors.primaryYellow,
       scaffoldBackgroundColor: AppColors.scaffoldBg,
-      fontFamily: 'SF Pro Display',
 
       // AppBar 主題
       appBarTheme: AppBarTheme(
@@ -195,6 +195,7 @@ class MyApp extends StatelessWidget {
         '/signup': (_) => const SignupPage(),
         '/home': (_) => const HomePage(),
         '/greenhouse': (_) => const GreenhousePage(),
+        '/profile': (_) => const ProfilePage(),
       },
       navigatorObservers: [routeObserver],
     );

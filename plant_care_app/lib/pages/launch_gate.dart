@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../config/constants.dart';
 import '../utils/session.dart';
+import '../widgets/app_logo.dart';
 
 class LaunchGate extends StatefulWidget {
   const LaunchGate({super.key});
@@ -84,26 +85,7 @@ class _LaunchGateState extends State<LaunchGate>
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
                   // Logo 圖標
-                  Container(
-                    width: 120,
-                    height: 120,
-                    decoration: BoxDecoration(
-                      gradient: AppColors.yellowGradient,
-                      shape: BoxShape.circle,
-                      boxShadow: [
-                        BoxShadow(
-                          color: AppColors.deepYellow.withAlpha(128),
-                          blurRadius: 30,
-                          offset: const Offset(0, 10),
-                        ),
-                      ],
-                    ),
-                    child: const Icon(
-                      Icons.eco_rounded,
-                      size: 60,
-                      color: Colors.white,
-                    ),
-                  ),
+                  const AppLogo(size: 140),
 
                   const SizedBox(height: 32),
 

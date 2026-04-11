@@ -17,6 +17,7 @@ class User(Base):
     name: Mapped[str] = mapped_column(String(100))
     email: Mapped[str] = mapped_column(String(255), unique=True, index=True)
     password_hash: Mapped[str] = mapped_column(String(255))
+    points: Mapped[int] = mapped_column(Integer, default=0)
     phone: Mapped[str | None] = mapped_column(String(50), nullable=True)
     birthday: Mapped[date | None] = mapped_column(Date, nullable=True)
     created_at: Mapped[datetime] = mapped_column(

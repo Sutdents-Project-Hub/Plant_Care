@@ -3,6 +3,7 @@ import 'package:flutter/cupertino.dart';
 import '../config/constants.dart';
 import '../services/api_service.dart';
 import '../utils/tools.dart';
+import '../widgets/app_logo.dart';
 import '../widgets/custom_button.dart';
 import '../widgets/custom_text_field.dart';
 import 'signup_page.dart';
@@ -38,7 +39,8 @@ class _LoginPageState extends State<LoginPage> {
       if (!mounted) return;
       Navigator.pushReplacementNamed(context, '/home');
     } catch (e) {
-      await showAlert(context, e.toString(), title: 'Login Failed');
+      final msg = e is ApiException ? e.message : e.toString();
+      await showAlert(context, msg, title: 'Login Failed');
     } finally {
       if (mounted) setState(() => _loading = false);
     }
@@ -167,19 +169,32 @@ class _LoginPageState extends State<LoginPage> {
                       crossAxisAlignment: CrossAxisAlignment.stretch,
                       children: [
                         // 植物圖標
-                        Container(
-                          width: 80,
-                          height: 80,
-                          margin: const EdgeInsets.only(bottom: 24),
-                          decoration: BoxDecoration(
-                            gradient: AppColors.yellowGradient,
-                            shape: BoxShape.circle,
-                            boxShadow: AppShadows.button,
-                          ),
-                          child: const Icon(
-                            Icons.eco_rounded,
-                            size: 40,
-                            color: Colors.white,
+                        const SizedBox(height: 12),
+                        Center(
+                          child: Padding(
+                            padding: const EdgeInsets.only(bottom: 24),
+                            child: Container(
+                              decoration: BoxDecoration(
+                                shape: BoxShape.circle,
+                                boxShadow: [
+                                  BoxShadow(
+                                    color: AppColors.deepYellow.withAlpha(70),
+                                    blurRadius: 28,
+                                    spreadRadius: 2,
+                                    offset: Offset.zero,
+                                  ),
+                                  BoxShadow(
+                                    color: AppColors.primaryYellow.withAlpha(
+                                      50,
+                                    ),
+                                    blurRadius: 42,
+                                    spreadRadius: 8,
+                                    offset: Offset.zero,
+                                  ),
+                                ],
+                              ),
+                              child: const AppLogo(size: 92),
+                            ),
                           ),
                         ),
 

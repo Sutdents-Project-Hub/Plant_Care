@@ -21,14 +21,14 @@ services:
     restart: unless-stopped
     environment:
       DATABASE_URL: postgresql+psycopg://plant_care:plant_care@db:5432/plant_care
-      JWT_SECRET: change-me
-      JWT_ACCESS_TTL_MINUTES: "15"
-      JWT_REFRESH_TTL_DAYS: "30"
-      CORS_ALLOW_ORIGINS: "*"
-      AI_PROVIDER: openai
-      OPENAI_API_KEY: ""
-      OPENAI_BASE_URL: https://api.openai.com/v1
-      OPENAI_MODEL: gpt-4o-mini
+      JWT_SECRET: ${JWT_SECRET:-change-me}
+      JWT_ACCESS_TTL_MINUTES: ${JWT_ACCESS_TTL_MINUTES:-15}
+      JWT_REFRESH_TTL_DAYS: ${JWT_REFRESH_TTL_DAYS:-30}
+      CORS_ALLOW_ORIGINS: ${CORS_ALLOW_ORIGINS:-*}
+      AI_PROVIDER: ${AI_PROVIDER:-openai}
+      OPENAI_API_KEY: ${OPENAI_API_KEY:-}
+      OPENAI_BASE_URL: ${OPENAI_BASE_URL:-https://api.openai.com/v1}
+      OPENAI_MODEL: ${OPENAI_MODEL:-gpt-4o-mini}
     ports:
       - "8000:8000"
     depends_on:
