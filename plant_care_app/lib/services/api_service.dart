@@ -183,6 +183,7 @@ class ApiService {
       email: (user['email'] ?? email).toString(),
       name: user['name']?.toString(),
       points: int.tryParse((user['points'] ?? '').toString()) ?? 0,
+      mustChangePassword: user['must_change_password'] == true,
       accessToken: accessToken,
       refreshToken: refreshToken,
       accessExpiresAt: accessExpiresAt,
@@ -261,6 +262,7 @@ class ApiService {
       email: user['email']?.toString(),
       name: user['name']?.toString(),
       points: int.tryParse((user['points'] ?? '').toString()),
+      mustChangePassword: user['must_change_password'] == true,
     );
     return user;
   }
@@ -319,13 +321,12 @@ class ApiService {
         code: res.statusCode,
       );
     }
-    unawaited(
-      Session.setTokens(
-        accessToken: accessToken,
-        refreshToken: refreshToken,
-        accessExpiresAt: accessExpiresAt,
-      ).catchError((_) {}),
+    await Session.setTokens(
+      accessToken: accessToken,
+      refreshToken: refreshToken,
+      accessExpiresAt: accessExpiresAt,
     );
+    await Session.setUserInfo(mustChangePassword: false);
   }
 
   static Future<void> deleteAccount({required String password}) async {

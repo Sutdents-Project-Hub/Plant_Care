@@ -64,6 +64,17 @@ curl -s http://127.0.0.1:8000/health
 - `OPENAI_API_KEY`：AI 供應商金鑰（可留空，後端會走 fallback 任務）
 - `OPENAI_BASE_URL`：OpenAI 相容 API base URL
 - `OPENAI_MODEL`：使用的模型名稱（預設 `gpt-4o-mini`）
+- `APP_NAME`：寄信主旨/內文使用的專案名稱
+- `EMAIL_BACKEND`：寄信方式（`smtp`/`console`/`disabled`）
+- `SMTP_HOST`：SMTP 主機（`EMAIL_BACKEND=smtp` 時必填）
+- `SMTP_PORT`：SMTP 連接埠（預設 `587`）
+- `SMTP_USERNAME`：SMTP 帳號
+- `SMTP_PASSWORD`：SMTP 密碼
+- `SMTP_FROM`：寄件者 Email（例如 `no-reply@your-domain.com`）
+- `SMTP_FROM_NAME`：寄件者顯示名稱
+- `SMTP_USE_TLS`：是否使用 STARTTLS（`true/false`）
+- `SMTP_USE_SSL`：是否使用 SMTPS（`true/false`，與 TLS 二擇一）
+- `SMTP_TIMEOUT_SECONDS`：SMTP 連線逾時秒數
 
 ## 建置 / 啟動方式
 - 開發：`uvicorn app.main:app`

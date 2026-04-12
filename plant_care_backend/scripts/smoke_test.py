@@ -8,14 +8,17 @@ os.environ["JWT_SECRET"] = os.environ.get("JWT_SECRET") or "smoke-secret"
 os.environ["OPENAI_API_KEY"] = os.environ.get("OPENAI_API_KEY") or ""
 os.environ["OPENAI_BASE_URL"] = os.environ.get("OPENAI_BASE_URL") or "https://free.v36.cm"
 os.environ["OPENAI_MODEL"] = os.environ.get("OPENAI_MODEL") or "gpt-4o-mini"
+os.environ["APP_NAME"] = os.environ.get("APP_NAME") or "Plant Care"
+os.environ["EMAIL_BACKEND"] = os.environ.get("EMAIL_BACKEND") or "disabled"
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 from fastapi.testclient import TestClient
+from sqlalchemy import select
 
 from app.core.database import SessionLocal, engine
 from app.main import app
-from app.models import Announcement, Base
+from app.models import Announcement, Base, RefreshToken, User
 
 
 def _assert(res, status: int) -> None:
@@ -155,6 +158,43 @@ def main() -> None:
 
     r = client.post("/api/v1/auth/me", headers=headers, json={})
     _assert(r, 200)
+
+    email2 = "smoke_reset@example.com"
+    password2 = "password1234"
+    r = client.post(
+        "/api/v1/auth/register",
+        json={
+            "name": "SmokeReset",
+            "email": email2,
+            "password": password2,
+            "phone": "000",
+            "birthday": "19900101",
+        },
+    )
+    _assert(r, 200)
+    r = client.post("/api/v1/auth/login", json={"email": email2, "password": password2})
+    _assert(r, 200)
+    with SessionLocal() as db:
+        user2 = db.scalar(select(User).where(User.email == email2))
+        if user2 is None:
+            raise RuntimeError("Expected user2")
+        old_hash = user2.password_hash
+        if old_hash is None:
+            raise RuntimeError("Expected password_hash")
+
+    r = client.post("/api/v1/auth/found_psw", json={"email": email2})
+    _assert(r, 200)
+    with SessionLocal() as db:
+        user2 = db.scalar(select(User).where(User.email == email2))
+        if user2 is None:
+            raise RuntimeError("Expected user2")
+        if user2.must_change_password is not True:
+            raise RuntimeError("Expected must_change_password true")
+        if user2.password_hash == old_hash:
+            raise RuntimeError("Expected password_hash changed")
+        tokens2 = db.scalars(select(RefreshToken).where(RefreshToken.user_id == user2.id)).all()
+        if tokens2:
+            raise RuntimeError("Expected refresh tokens revoked")
 
     r = client.post(
         "/api/v1/auth/delete_account",

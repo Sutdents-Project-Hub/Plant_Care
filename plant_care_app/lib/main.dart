@@ -7,6 +7,7 @@ import 'pages/signup_page.dart';
 import 'pages/home_page.dart';
 import 'pages/greenhouse_page.dart';
 import 'pages/launch_gate.dart';
+import 'pages/force_change_password_page.dart';
 import 'pages/profile_page.dart';
 import 'utils/nav.dart';
 
@@ -196,6 +197,7 @@ class MyApp extends StatelessWidget {
         '/signup': (_) => const SignupPage(),
         '/home': (_) => const HomePage(),
         '/greenhouse': (_) => const GreenhousePage(),
+        '/force_change_password': (_) => const ForceChangePasswordPage(),
         '/profile': (_) => const ProfilePage(),
       },
       navigatorObservers: [routeObserver],

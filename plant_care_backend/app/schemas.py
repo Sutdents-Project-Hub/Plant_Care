@@ -17,6 +17,7 @@ class UserPublic(BaseModel):
     points: int = 0
     phone: str | None = None
     birthday: date | None = None
+    must_change_password: bool = False
 
 
 class AuthRegisterRequest(BaseModel):
@@ -46,6 +47,10 @@ class AuthResponse(BaseModel):
 
 class TokenRefreshRequest(BaseModel):
     refresh_token: str
+
+
+class FoundPasswordRequest(BaseModel):
+    email: EmailStr
 
 
 class UserUpdateRequest(BaseModel):

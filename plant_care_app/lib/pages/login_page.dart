@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/cupertino.dart';
 import '../config/constants.dart';
 import '../services/api_service.dart';
+import '../utils/session.dart';
 import '../utils/tools.dart';
 import '../widgets/app_logo.dart';
 import '../widgets/custom_button.dart';
@@ -37,7 +38,8 @@ class _LoginPageState extends State<LoginPage> {
         password: _password.text,
       );
       if (!mounted) return;
-      Navigator.pushReplacementNamed(context, '/home');
+      final next = Session.mustChangePassword ? '/force_change_password' : '/home';
+      Navigator.pushReplacementNamed(context, next);
     } catch (e) {
       final msg = e is ApiException ? e.message : e.toString();
       await showAlert(context, msg, title: 'Login Failed');
@@ -106,12 +108,13 @@ class _LoginPageState extends State<LoginPage> {
       await showAlert(
         context,
         res['message']?.toString() ??
-            'A new password has been generated and sent to your email.',
+            'If the account exists, a reset email will be sent.',
         title: 'Password Reset',
       );
     } catch (e) {
       if (!mounted) return;
-      await showAlert(context, e.toString(), title: 'Reset Failed');
+      final msg = e is ApiException ? e.message : e.toString();
+      await showAlert(context, msg, title: 'Reset Failed');
     }
   }
 

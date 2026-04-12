@@ -5,6 +5,7 @@
 build/
 **/.idea/
 **/.vscode/
+.trae/
 
 plant_care_backend/.venv/
 plant_care_backend/*.db

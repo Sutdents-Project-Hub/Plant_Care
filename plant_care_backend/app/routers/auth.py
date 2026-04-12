@@ -1,6 +1,8 @@
 from __future__ import annotations
 
 from datetime import UTC, datetime
+import secrets
+import string
 
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy import delete, select
@@ -24,14 +26,21 @@ from app.schemas import (
     AuthResponse,
     ChangePasswordRequest,
     DeleteAccountRequest,
+    FoundPasswordRequest,
     TokenPair,
     TokenRefreshRequest,
     UserUpdateRequest,
     UserPublic,
 )
 from app.utils.datetime import parse_ymd
+from app.utils.email import send_reset_password_email
 
 router = APIRouter()
+
+
+def _generate_temp_password(*, length: int = 12) -> str:
+    alphabet = string.ascii_letters + string.digits
+    return "".join(secrets.choice(alphabet) for _ in range(length))
 
 
 @router.post("/register", response_model=AuthResponse)
@@ -78,6 +87,7 @@ def register(payload: AuthRegisterRequest, db: Session = Depends(get_db)) -> Aut
             points=user.points,
             phone=user.phone,
             birthday=user.birthday,
+            must_change_password=user.must_change_password,
         ),
         tokens=TokenPair(
             access_token=access_token,
@@ -115,6 +125,7 @@ def login(payload: AuthLoginRequest, db: Session = Depends(get_db)) -> AuthRespo
             points=user.points,
             phone=user.phone,
             birthday=user.birthday,
+            must_change_password=user.must_change_password,
         ),
         tokens=TokenPair(
             access_token=access_token,
@@ -184,6 +195,7 @@ def me(user: User = Depends(get_current_user)) -> UserPublic:
         points=user.points,
         phone=user.phone,
         birthday=user.birthday,
+        must_change_password=user.must_change_password,
     )
 
 
@@ -236,6 +248,7 @@ def update_profile(
         points=user.points,
         phone=user.phone,
         birthday=user.birthday,
+        must_change_password=user.must_change_password,
     )
 
 
@@ -252,6 +265,7 @@ def change_password(
         )
 
     user.password_hash = hash_password(payload.new_password)
+    user.must_change_password = False
 
     db.execute(
         delete(RefreshToken).where(
@@ -298,6 +312,24 @@ def delete_account(
 
 
 @router.post("/found_psw", response_model=ApiMessage)
-def found_password(_: dict, db: Session = Depends(get_db)) -> ApiMessage:
-    _ = db
+def found_password(payload: FoundPasswordRequest, db: Session = Depends(get_db)) -> ApiMessage:
+    email = str(payload.email).strip().lower()
+    user = db.scalar(select(User).where(User.email == email))
+
+    if user is not None:
+        temp_password = _generate_temp_password()
+        try:
+            user.password_hash = hash_password(temp_password)
+            user.must_change_password = True
+            db.execute(delete(RefreshToken).where(RefreshToken.user_id == user.id))
+            db.flush()
+            send_reset_password_email(to_email=user.email, temp_password=temp_password)
+            db.commit()
+        except Exception:
+            db.rollback()
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail="Failed to send reset email",
+            )
+
     return ApiMessage(message="If the account exists, a reset email will be sent.")

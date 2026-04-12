@@ -104,7 +104,7 @@ class _LaunchGateState extends State<LaunchGate>
                       const AppLogo(size: 140),
                       const SizedBox(height: 32),
                       const Text(
-                        'Plant Care',
+                        'Plant',
                         textAlign: TextAlign.center,
                         style: TextStyle(
                           fontSize: 48,
