@@ -34,8 +34,10 @@ flutter test
 
 ## 環境變數
 以編譯期參數注入：
-- `API_BASE_URL`：後端 base URL（預設 `http://localhost:8000`）
-- 正式環境請使用 `https` URL，不要把正式 API 寫死在原始碼內
+- `API_BASE_URL`：後端 base URL
+- 未提供時，Debug 預設 `http://localhost:8000`
+- 未提供時，Release 預設 `https://plantcareapi.beioverworked.com`
+- 需要切換環境時，仍可用 `--dart-define=API_BASE_URL=...` 覆寫
 
 ## 建置 / 啟動方式
 ### macOS（Debug）
@@ -53,17 +55,18 @@ flutter build macos --debug --dart-define=API_BASE_URL=http://localhost:8000
 
 ### Android（Release）
 ```bash
-flutter build apk --release --dart-define=API_BASE_URL=https://api.example.com
+flutter build appbundle --release
 ```
 
 ### iOS（不簽章）
 ```bash
-flutter build ios --no-codesign --dart-define=API_BASE_URL=https://api.example.com
+flutter build ios --release --no-codesign
 ```
 
 ## 部署細節
 上架前請確認：
-- `API_BASE_URL` 指向正式環境（建議 `https`）
+- Release 預設會連到 `https://plantcareapi.beioverworked.com`
+- 若要改連其他環境，請在建置時明確帶入 `--dart-define=API_BASE_URL=...`
 - APP 端不放置 `OPENAI_API_KEY` 等金鑰（由後端服務持有與呼叫 AI）
 - Android release signing 使用 repo 外部的 `android/key.properties` 與 keystore；可參考 `android/key.properties.example`
 - Android / iOS 正式識別已改為 `com.beioverworked.plantcare`

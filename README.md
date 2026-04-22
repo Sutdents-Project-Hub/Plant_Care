@@ -86,7 +86,9 @@ flutter run -d macos --dart-define=API_BASE_URL=http://localhost:8000
 
 ## 環境變數
 ### 前端（編譯期參數）
-- `API_BASE_URL`：後端 base URL（預設 `http://localhost:8000`）
+- `API_BASE_URL`：後端 base URL
+- 未提供時，Debug 預設 `http://localhost:8000`
+- 未提供時，Release 預設 `https://plantcareapi.beioverworked.com`
 
 ### 後端（建議以環境變數或 `.env` 注入）
 參考：`plant_care_backend/.env.example`
@@ -134,16 +136,16 @@ flutter run -d macos --dart-define=API_BASE_URL=http://localhost:8000
 - 例：`OPENAI_BASE_URL=https://free.v36.cm` 或 `OPENAI_BASE_URL=https://api.v36.cm`
 
 ## 正式建置範例
-### Android APK
+### Android App Bundle
 ```bash
 cd plant_care_app
-flutter build apk --release --dart-define=API_BASE_URL=https://api.example.com
+flutter build appbundle --release
 ```
 
 ### iOS（不簽章）
 ```bash
 cd plant_care_app
-flutter build ios --no-codesign --dart-define=API_BASE_URL=https://api.example.com
+flutter build ios --release --no-codesign
 ```
 
 ### Android release 簽章

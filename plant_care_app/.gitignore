@@ -32,6 +32,10 @@ migrate_working_dir/
 .pub-cache/
 .pub/
 /build/
+.bundle/
+/vendor/bundle/
+/ios/fastlane/README.md
+/ios/fastlane/report.xml
 
 # Symbolication related
 app.*.symbols

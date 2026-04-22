@@ -6,9 +6,17 @@ class AppAssets {
 }
 
 class AppConfig {
+  static const String productionApiBaseUrl =
+      'https://plantcareapi.beioverworked.com';
+  static const String developmentApiBaseUrl = 'http://localhost:8000';
+  static const String defaultApiBaseUrl =
+      bool.fromEnvironment('dart.vm.product')
+          ? productionApiBaseUrl
+          : developmentApiBaseUrl;
+
   static const String apiBaseUrl = String.fromEnvironment(
     'API_BASE_URL',
-    defaultValue: 'http://localhost:8000',
+    defaultValue: defaultApiBaseUrl,
   );
 
   static const String apiV1BaseUrl = '$apiBaseUrl/api/v1';
