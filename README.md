@@ -98,6 +98,11 @@ flutter run -d macos --dart-define=API_BASE_URL=http://localhost:8000
 - `OPENAI_API_KEY`：AI 供應商金鑰（可留空，後端會自動回傳 fallback 任務）
 - `OPENAI_BASE_URL`：OpenAI 相容 API base URL
 - `OPENAI_MODEL`：使用的模型名稱（預設 `gpt-4o-mini`）
+- `EXPOSE_API_DOCS`：是否對外開放後端 API 文件（正式環境建議 `false`）
+- `PUBLIC_RATE_LIMIT_ENABLED`：是否啟用公開端點流量限制
+- `PUBLIC_RATE_LIMIT_REQUESTS`：單一 IP 在時間窗內可請求的次數
+- `PUBLIC_RATE_LIMIT_WINDOW_SECONDS`：流量限制的時間窗（秒）
+- `PUBLIC_RATE_LIMIT_PATHS`：要套用流量限制的公開路由，使用逗號分隔
 
 ## GitHub 上傳建議
 - 可以上傳：原始碼、平台專案檔、`pubspec.lock`、`Podfile.lock`、Alembic migration、`Dockerfile`、`docker-compose.dev.yml`、README。
@@ -114,6 +119,8 @@ flutter run -d macos --dart-define=API_BASE_URL=http://localhost:8000
 - 容器啟動流程：`entrypoint.sh` 會先執行 `alembic upgrade head`，再啟動 `uvicorn`
 - 建議將 `plant_care_backend/.env` 留在本機，不要上傳；正式值統一在 Coolify 的環境變數介面設定
 - 若使用 Coolify 的 Dockerfile 部署，請勿在 `plant_care_backend/` 內保留名稱為 `docker-compose.yaml`、`docker-compose.yml`、`compose.yaml` 或 `compose.yml` 的檔案，避免被誤判成 Compose 專案
+- 正式環境建議設定 `EXPOSE_API_DOCS=false`，僅保留 `/health` 作為公開健康檢查
+- 後端預設會對登入、註冊、refresh、忘記密碼、公告查詢與 AI 任務產生等公開端點啟用 IP 流量限制，可透過 `PUBLIC_RATE_LIMIT_*` 調整
 
 ### 建議的後端環境變數
 - 必填：`DATABASE_URL`、`JWT_SECRET`

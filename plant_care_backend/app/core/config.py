@@ -28,12 +28,31 @@ class Settings(BaseSettings):
     smtp_use_ssl: bool = False
     smtp_timeout_seconds: int = 10
 
+    expose_api_docs: bool = False
+    public_rate_limit_enabled: bool = True
+    public_rate_limit_requests: int = 30
+    public_rate_limit_window_seconds: int = 60
+    public_rate_limit_paths: str = (
+        "/api/v1/auth/register,"
+        "/api/v1/auth/login,"
+        "/api/v1/auth/refresh,"
+        "/api/v1/auth/found_psw,"
+        "/api/v1/ai/generate_tasks,"
+        "/api/v1/homepage/search_announcements"
+    )
+
     def cors_origins(self) -> list[str]:
         v = (self.cors_allow_origins or "").strip()
         if not v:
             return []
         if v == "*":
             return ["*"]
+        return [p.strip() for p in v.split(",") if p.strip()]
+
+    def rate_limit_paths_list(self) -> list[str]:
+        v = (self.public_rate_limit_paths or "").strip()
+        if not v:
+            return []
         return [p.strip() for p in v.split(",") if p.strip()]
 
 

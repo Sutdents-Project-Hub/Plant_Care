@@ -82,6 +82,11 @@ curl -s http://127.0.0.1:8000/health
 - `SMTP_USE_TLS`：是否使用 STARTTLS（`true/false`）
 - `SMTP_USE_SSL`：是否使用 SMTPS（`true/false`，與 TLS 二擇一）
 - `SMTP_TIMEOUT_SECONDS`：SMTP 連線逾時秒數
+- `EXPOSE_API_DOCS`：是否對外開放 `/docs`、`/redoc`、`/openapi.json`（正式環境建議 `false`）
+- `PUBLIC_RATE_LIMIT_ENABLED`：是否啟用公開端點流量限制
+- `PUBLIC_RATE_LIMIT_REQUESTS`：單一 IP 在時間窗內可請求的次數
+- `PUBLIC_RATE_LIMIT_WINDOW_SECONDS`：流量限制的時間窗（秒）
+- `PUBLIC_RATE_LIMIT_PATHS`：要套用流量限制的公開路由，使用逗號分隔
 - `.env` 僅建議本機開發使用；正式部署請改由平台環境變數注入
 - `.env.example` 可公開，真實金鑰或 SMTP 密碼不要寫進 repo
 - 若開發期 `.env` 曾使用真實金鑰，正式部署前請先旋轉這批憑證
@@ -104,6 +109,8 @@ curl -s http://127.0.0.1:8000/health
 - 容器啟動時會先執行 migration，再啟動 API
 - SMTP 相關設定為可選；若要啟用 `EMAIL_BACKEND=smtp`，請一併提供完整 SMTP 參數
 - 若使用 Coolify 的 Dockerfile 部署，請勿在 `plant_care_backend/` 保留名稱為 `docker-compose.yaml`、`docker-compose.yml`、`compose.yaml` 或 `compose.yml` 的檔案，避免被誤判成 Compose 專案
+- 正式環境建議設定 `EXPOSE_API_DOCS=false`，只保留 `GET /health` 作為公開健康檢查
+- 預設會對登入、註冊、refresh、忘記密碼、公告查詢與 AI 任務產生等公開端點啟用 IP 流量限制；如需調整，請修改 `PUBLIC_RATE_LIMIT_*`
 
 ### AI 供應商切換
 後端使用 OpenAI 相容協定外呼，透過調整 `OPENAI_BASE_URL` 可切換供應商。
